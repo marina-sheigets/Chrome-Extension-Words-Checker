@@ -1,1 +1,1 @@
-# Chrome-Extension-Words-Checker-
+# Chrome-Extension-Words-Checker
