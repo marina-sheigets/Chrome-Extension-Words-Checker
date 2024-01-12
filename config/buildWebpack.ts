@@ -1,10 +1,7 @@
 import webpack from 'webpack';
 import path from 'path';
-
-// import { buildDevServer } from './buildDevServer';
 import { buildLoaders } from './buildLoaders';
 import { buildPlugins } from './buildPlugins';
-// import { buildResolver } from './buildResolver';
 import { BuildOptions } from './types';
 
 export function buildWebpack(options: BuildOptions): webpack.Configuration {
@@ -27,8 +24,5 @@ export function buildWebpack(options: BuildOptions): webpack.Configuration {
 			},
 			extensions: ['.js', '.jsx', '.json', '.ts'],
 		},
-
-		// devtool: isDev ? 'inline-source-map' : false,
-		// resolve: buildResolver(options),
 	};
 }

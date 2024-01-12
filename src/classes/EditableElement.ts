@@ -9,8 +9,8 @@ import Popup from './Popup';
 
 class EditableElement {
 	handleTextInputElements() {
-		const allInputs = document.querySelectorAll('input[type="text"], textarea');
-		const allEditableElements = document.querySelectorAll('[contenteditable="true"');
+		const allInputs = document.querySelectorAll('body input[type="text"], body textarea');
+		const allEditableElements = document.querySelectorAll('[contenteditable="true"]');
 
 		allInputs.forEach((inputElement: HTMLInputElement) => {
 			const iframe = inputElement.closest('iframe');
@@ -79,6 +79,7 @@ class EditableElement {
 		element: HTMLInputElement,
 		elementType: string
 	) {
+		Popup.removePopup();
 		const value = elementType === ELEMENT_TYPES.INPUT ? element.value : element.textContent;
 		let nearestWord = '';
 		if (startIndex !== endIndex) {
@@ -95,6 +96,7 @@ class EditableElement {
 		element: HTMLInputElement,
 		elementType: string
 	) {
+		Popup.removePopup();
 		const value = elementType === ELEMENT_TYPES.INPUT ? element.value : element.textContent;
 		let nearestWord = '';
 		if (Object.values(KEYBOARD_CODES).includes(event.code)) {

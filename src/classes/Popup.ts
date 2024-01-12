@@ -1,25 +1,26 @@
 import { ELEMENT_TYPES } from '../../constants';
-import { createRandomBackground, replaceWords } from '../../utils';
+import { replaceWords, setCursorPos } from '../../utils';
+import EditableElement from './EditableElement';
 
 class Popup {
-	popupDiv: HTMLDivElement | null;
-
+	popupDiv: HTMLElement | null = null;
 	createPopup(
 		options: string[],
 		inputElement: HTMLInputElement,
 		incorrectWord: string,
 		elementType: string
 	) {
-		const inputRect = inputElement.getBoundingClientRect();
-
 		const popupDiv = document.createElement('div');
 
-		const popupLeft = inputRect.left;
-		const popupTop = inputRect.top + inputRect.height;
+		document.addEventListener('click', (event) => {
+			if (!this.isClickInsidePopup(event, popupDiv)) {
+				this.removePopup();
+			}
+		});
 
 		popupDiv.id = 'popup';
 
-		this.createPopupStyles(popupLeft, popupTop);
+		this.createPopupStyles(inputElement);
 
 		const list = document.createElement('ul');
 		list.id = 'popup__list';
@@ -30,6 +31,10 @@ class Popup {
 			li.classList.add('popup__list-item');
 			list.appendChild(li);
 
+			const [startIndex, endIndex] = EditableElement.countCursorPositions(
+				inputElement,
+				elementType
+			);
 			//listener for choosing option
 			li.addEventListener('click', (event) => {
 				let newValue = replaceWords(
@@ -37,7 +42,8 @@ class Popup {
 						? inputElement.value
 						: inputElement.textContent,
 					incorrectWord,
-					(event.target as HTMLElement).textContent
+					(event.target as HTMLElement).textContent,
+					startIndex
 				);
 
 				if (elementType === ELEMENT_TYPES.INPUT) {
@@ -46,22 +52,61 @@ class Popup {
 					inputElement.textContent = newValue;
 				}
 				this.removePopup();
-
 				//using setTimeout to prevnt restoring old value for contenteditable divs
 				setTimeout(() => {
+					if (elementType === ELEMENT_TYPES.INPUT) {
+						inputElement.setSelectionRange(endIndex, endIndex);
+					} else {
+						setCursorPos(inputElement, endIndex);
+					}
 					inputElement.focus();
 				}, 0);
 			});
 		});
 
-		popupDiv.appendChild(list);
 		this.popupDiv = popupDiv;
+
+		popupDiv.appendChild(list);
+
+		this.createChangeBackgroundInput(popupDiv);
+
 		document.body.appendChild(popupDiv);
 	}
 
+	async createChangeBackgroundInput(popup: HTMLElement) {
+		const wrapper = document.createElement('div');
+		wrapper.id = 'color-input-wrapper';
+
+		const inputLabel = document.createElement('label');
+		inputLabel.textContent = 'Color: ';
+		inputLabel.htmlFor = 'color';
+		inputLabel.style.fontStyle = 'italic';
+
+		const changeBackgroundInput = document.createElement('input');
+		changeBackgroundInput.value = await this.getStoredBackground();
+		changeBackgroundInput.name = 'color';
+		changeBackgroundInput.type = 'color';
+
+		changeBackgroundInput.addEventListener('input', (e: Event) => {
+			const elem = e.target as HTMLInputElement;
+			this.setStoredBackground(elem.value);
+			popup.style.background = elem.value;
+		});
+
+		wrapper.appendChild(inputLabel);
+		wrapper.appendChild(changeBackgroundInput);
+		popup.appendChild(wrapper);
+	}
+
 	removePopup() {
-		document.body.removeChild(this.popupDiv);
-		this.popupDiv = null;
+		if (this.popupDiv) {
+			document.body.removeChild(this.popupDiv);
+			this.popupDiv = null; // Reset the stored popupDiv
+		}
+	}
+
+	isClickInsidePopup(event: MouseEvent, popupDiv: Element) {
+		return this.popupDiv ? this.popupDiv.contains(event.target as Node) : true;
 	}
 
 	getStoredBackground(): Promise<string> {
@@ -77,26 +122,25 @@ class Popup {
 		chrome.storage.local.set({ 'dropdown-background': background });
 	}
 
-	async createPopupStyles(popupLeft: number, popupTop: number) {
+	async createPopupStyles(inputElement: Element) {
 		const styleTag = document.createElement('style');
 		let background = await this.getStoredBackground();
-
+		const inputRect = inputElement.getBoundingClientRect();
 		if (!background) {
-			background = createRandomBackground();
+			background = 'white';
 			this.setStoredBackground(background);
 		}
 
 		styleTag.textContent = `
         #popup {
-            display: block;
             position: absolute;
-            left: ${popupLeft}px;
-            top: ${popupTop}px;
+            left: ${inputRect.left}px;
+            top: ${inputRect.top + inputRect.height}px;
             background: ${background};
             border: 1px solid #ccc;    
 			border-radius:4px;        
-            width:150px;
-			z-index:100;
+            width:${inputRect.width}px;
+			z-index:5000;
         }
 
         #popup__list {
@@ -114,13 +158,15 @@ class Popup {
         .popup__list-item:hover {
             background: rgba(0,0,0,0.2);
         }
+
+		#color-input-wrapper{
+			display:flex;
+			justify-content:space-between;
+			padding: 5px;
+		}
         `;
 
 		document.head.appendChild(styleTag);
-	}
-
-	isClickInsidePopup(event: MouseEvent) {
-		return this.popupDiv ? this.popupDiv.contains(event.target as Node) : true;
 	}
 }
 
