@@ -84,10 +84,17 @@ class EditableElement {
 		let nearestWord = '';
 		if (startIndex !== endIndex) {
 			nearestWord = value.slice(startIndex, endIndex).trim();
+			this.checkWord(
+				nearestWord,
+				element,
+				elementType,
+				startIndex,
+				endIndex + nearestWord.length
+			);
 		} else {
-			nearestWord = findNearestWord(startIndex, value, event.code);
+			const { word, start, end } = findNearestWord(startIndex, value, event.code);
+			this.checkWord(word, element, elementType, start, end);
 		}
-		this.checkWord(nearestWord, element, elementType);
 	}
 
 	handleKeydownEvent(
@@ -98,17 +105,28 @@ class EditableElement {
 	) {
 		Popup.removePopup();
 		const value = elementType === ELEMENT_TYPES.INPUT ? element.value : element.textContent;
-		let nearestWord = '';
 		if (Object.values(KEYBOARD_CODES).includes(event.code)) {
-			nearestWord = findNearestWord(startIndex, value, event.code);
+			const { word, start, end } = findNearestWord(startIndex, value, event.code);
+			this.checkWord(word, element, elementType, start, end);
 		}
-
-		this.checkWord(nearestWord, element, elementType);
 	}
 
-	checkWord(word: string, inputElement: HTMLInputElement, elementType: string) {
+	checkWord(
+		word: string,
+		inputElement: HTMLInputElement,
+		elementType: string,
+		startIndex: number,
+		endIndex: number
+	) {
 		if (MOCK_INCORRECT_WORDS_LIST[word]) {
-			Popup.createPopup(MOCK_INCORRECT_WORDS_LIST[word], inputElement, word, elementType);
+			Popup.createPopup(
+				MOCK_INCORRECT_WORDS_LIST[word],
+				inputElement,
+				word,
+				elementType,
+				startIndex,
+				endIndex
+			);
 		}
 	}
 

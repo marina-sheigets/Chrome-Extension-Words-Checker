@@ -1,5 +1,5 @@
 import { ELEMENT_TYPES } from '../../constants';
-import { replaceWords, setCursorPos } from '../../utils';
+import { findNearestWord, replaceWords, setCursorPos } from '../../utils';
 import EditableElement from './EditableElement';
 
 class Popup {
@@ -8,7 +8,9 @@ class Popup {
 		options: string[],
 		inputElement: HTMLInputElement,
 		incorrectWord: string,
-		elementType: string
+		elementType: string,
+		startIndex: number,
+		endIndex: number
 	) {
 		const popupDiv = document.createElement('div');
 
@@ -20,7 +22,7 @@ class Popup {
 
 		popupDiv.id = 'popup';
 
-		this.createPopupStyles(inputElement);
+		this.createPopupStyles(inputElement, elementType);
 
 		const list = document.createElement('ul');
 		list.id = 'popup__list';
@@ -30,11 +32,6 @@ class Popup {
 			li.textContent = optionText;
 			li.classList.add('popup__list-item');
 			list.appendChild(li);
-
-			const [startIndex, endIndex] = EditableElement.countCursorPositions(
-				inputElement,
-				elementType
-			);
 			//listener for choosing option
 			li.addEventListener('click', (event) => {
 				let newValue = replaceWords(
@@ -43,7 +40,8 @@ class Popup {
 						: inputElement.textContent,
 					incorrectWord,
 					(event.target as HTMLElement).textContent,
-					startIndex
+					startIndex,
+					endIndex
 				);
 
 				if (elementType === ELEMENT_TYPES.INPUT) {
@@ -77,11 +75,6 @@ class Popup {
 		const wrapper = document.createElement('div');
 		wrapper.id = 'color-input-wrapper';
 
-		const inputLabel = document.createElement('label');
-		inputLabel.textContent = 'Color: ';
-		inputLabel.htmlFor = 'color';
-		inputLabel.style.fontStyle = 'italic';
-
 		const changeBackgroundInput = document.createElement('input');
 		changeBackgroundInput.value = await this.getStoredBackground();
 		changeBackgroundInput.name = 'color';
@@ -93,7 +86,6 @@ class Popup {
 			popup.style.background = elem.value;
 		});
 
-		wrapper.appendChild(inputLabel);
 		wrapper.appendChild(changeBackgroundInput);
 		popup.appendChild(wrapper);
 	}
@@ -122,7 +114,7 @@ class Popup {
 		chrome.storage.local.set({ 'dropdown-background': background });
 	}
 
-	async createPopupStyles(inputElement: Element) {
+	async createPopupStyles(inputElement: HTMLInputElement, elementType: string) {
 		const styleTag = document.createElement('style');
 		let background = await this.getStoredBackground();
 		const inputRect = inputElement.getBoundingClientRect();
@@ -131,15 +123,16 @@ class Popup {
 			this.setStoredBackground(background);
 		}
 
+		const width = this.countWidth(inputElement, elementType);
+
 		styleTag.textContent = `
         #popup {
             position: absolute;
-            left: ${inputRect.left}px;
-            top: ${inputRect.top + inputRect.height}px;
+            left: ${inputRect.left + window.scrollX + width}px;
+            top: ${inputRect.top + 20}px;
             background: ${background};
             border: 1px solid #ccc;    
 			border-radius:4px;        
-            width:${inputRect.width}px;
 			z-index:5000;
         }
 
@@ -151,7 +144,7 @@ class Popup {
 
         .popup__list-item {
             cursor: pointer;
-            padding: 7px 15px;
+            padding: 7px;
         }
 
         
@@ -167,6 +160,33 @@ class Popup {
         `;
 
 		document.head.appendChild(styleTag);
+	}
+
+	countWidth(inputElement: HTMLInputElement, elementType: string) {
+		const inputValue =
+			elementType === ELEMENT_TYPES.INPUT ? inputElement.value : inputElement.textContent;
+		const [startX] = EditableElement.countCursorPositions(inputElement, elementType);
+
+		let { start: cursorPosition } = findNearestWord(startX, inputValue, '');
+
+		let tempElement = document.createElement('span');
+		tempElement.style.fontSize = window.getComputedStyle(inputElement).fontSize;
+		tempElement.style.fontFamily = window.getComputedStyle(inputElement).fontFamily;
+		tempElement.style.visibility = 'hidden';
+
+		if (elementType === ELEMENT_TYPES.INPUT) {
+			tempElement.textContent = inputValue.substring(0, cursorPosition);
+		} else {
+			tempElement.innerHTML = inputValue.substring(0, cursorPosition);
+		}
+
+		document.body.appendChild(tempElement);
+
+		let width = tempElement.offsetWidth;
+
+		document.body.removeChild(tempElement);
+
+		return width;
 	}
 }
 

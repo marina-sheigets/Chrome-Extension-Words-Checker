@@ -4,11 +4,16 @@ export const isStringEmpty = (str: string) => {
 	return !str.trim().length;
 };
 
-export const findNearestWord = (index: number, str: string, button: string) => {
+export const findNearestWord = (
+	index: number,
+	str: string,
+	button: string
+): { word: string; start: number; end: number } => {
 	if (button === KEYBOARD_CODES.SPACE) {
 		str = str.slice(0, index);
 		const words = str.split(' ').filter((word) => word);
-		return words[words.length - 1].trim();
+		const word = words[words.length - 1].trim();
+		return { word, start: str.length - 1 - word.length, end: str.length - 1 };
 	}
 	const words = str.trim().split(/\s+/);
 
@@ -20,63 +25,37 @@ export const findNearestWord = (index: number, str: string, button: string) => {
 		const end = start + word.length;
 
 		if (index >= start && index <= end) {
-			return word;
+			return { word, start, end };
 		}
 
 		cumulativeIndex += word.length + 1;
 		if (i === words.length - 1 && index === cumulativeIndex) {
-			return words[i].trim();
+			const word = words[i].trim();
+			return { word, start: str.length - 1 - word.length, end: str.length - 1 };
 		}
 	}
 
-	return '';
+	return { word: '', start: index, end: index };
 };
 
 export const replaceWords = (
 	str: string,
 	oldVal: string,
 	newVal: string,
-	cursorPosition: number
-): string => {
-	if (
-		str[cursorPosition - 1] === ' ' &&
-		(str[cursorPosition] === ' ' || cursorPosition === str.length)
-	) {
-		let strPart = str.slice(0, cursorPosition);
-		let rest = str.slice(cursorPosition);
-		let reversedResStr = reverseString(strPart).replace(oldVal, newVal);
-
-		return reverseString(reversedResStr) + rest;
+	startIndex: number,
+	endIndex: number
+) => {
+	if (startIndex < 0 || endIndex > str.length || startIndex >= endIndex) {
+		// Invalid indixes
+		return str;
 	}
 
-	const words = str.split(/\s+/);
+	const prefix = str.substring(0, startIndex);
+	const suffix = str.substring(endIndex);
 
-	let currentPos = 0;
+	const replacedSubstring = str.substring(startIndex, endIndex).replace(oldVal, newVal);
 
-	for (let i = 0; i < words.length; i++) {
-		const word = words[i];
-		const start = currentPos;
-		const end = start + word.length;
-
-		if (cursorPosition >= start && cursorPosition <= end) {
-			return str.slice(0, start) + newVal + str.slice(end);
-		}
-
-		currentPos = end + 1; // Move to the next word (adding 1 for the space)
-	}
-
-	// If the cursor is at the end of the string, handle it separately
-	if (cursorPosition === str.length) {
-		return str.replace(new RegExp(`\\b${words[words.length - 1]}\\b`), newVal);
-	}
-
-	// Cursor position is not within any word, return the original string
-	return str;
-};
-
-const reverseString = (str: string) => {
-	let words = str.split(/\s+/);
-	return words.length === 1 ? str : words.join(' ');
+	return prefix + replacedSubstring + suffix;
 };
 
 export function setCursorPos(element: HTMLElement, position: number) {
